@@ -5,32 +5,50 @@ export enum Status {
   OUT = "OUT",
 }
 
+const directions: readonly [number, number][] = [
+  [0, 1],
+  [0, -1],
+  [1, 0],
+  [-1, 0],
+];
+
 type Board = string[];
 
 export class Goban {
-  constructor(private goban: Board) {}
+  constructor(private board: Board) {}
+
+  private coordKey(x: number, y: number): string {
+    return `${x},${y}`;
+  }
 
   getStatus(x: number, y: number): Status {
     if (
-      !this.goban ||
+      !this.board ||
       y < 0 ||
-      y >= this.goban.length ||
+      y >= this.board.length ||
       x < 0 ||
-      x >= this.goban[0].length
+      x >= this.board[0].length
     ) {
       return Status.OUT;
     }
 
-    const cell = this.goban[y][x];
-    if (cell === ".") return Status.EMPTY;
-    if (cell === "o") return Status.WHITE;
-    if (cell === "#") return Status.BLACK;
+    const cell = this.board[y][x];
 
-    throw new Error(`Unknown cell: ${cell}`);
+    switch (cell) {
+      case ".":
+        return Status.EMPTY;
+      case "o":
+        return Status.WHITE;
+      case "#":
+        return Status.BLACK;
+      default:
+        throw new Error(`Unknown cell: ${cell}`);
+    }
   }
 
   isTaken(x: number, y: number): boolean {
     const startStatus = this.getStatus(x, y);
+
     if (startStatus === Status.EMPTY || startStatus === Status.OUT)
       return false;
 
@@ -38,24 +56,24 @@ export class Goban {
     const stack: [number, number][] = [[x, y]];
 
     while (stack.length) {
-      const [cx, cy] = stack.pop()!;
-      const key = `${cx},${cy}`;
+      const [currentX, currentY] = stack.pop()!;
+      const key = this.coordKey(currentX, currentY);
+
       if (visited.has(key)) continue;
       visited.add(key);
 
-      for (const [dx, dy] of [
-        [0, 1],
-        [0, -1],
-        [1, 0],
-        [-1, 0],
-      ]) {
-        const nx = cx + dx;
-        const ny = cy + dy;
-        const status = this.getStatus(nx, ny);
+      for (const [directionX, directionY] of directions) {
+        const neighbourX = currentX + directionX;
+        const neighbourY = currentY + directionY;
 
-        if (status === Status.EMPTY) return false;
-        if (status === startStatus) {
-          stack.push([nx, ny]);
+        const neighborStatus = this.getStatus(neighbourX, neighbourY);
+        if (neighborStatus === Status.EMPTY) return false;
+
+        if (
+          neighborStatus === startStatus &&
+          !visited.has(this.coordKey(neighbourX, neighbourY))
+        ) {
+          stack.push([neighbourX, neighbourY]);
         }
       }
     }
